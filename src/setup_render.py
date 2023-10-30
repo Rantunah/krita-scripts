@@ -349,3 +349,106 @@ current_document.refreshProjection()
 # Save the file as a `.kra` file in the same place, with the same name
 new_file_path = str(current_doc_path / (current_doc_name + ".kra"))
 current_document.saveAs(new_file_path)
+
+# TODO: This is a hack to allow `perchannel` layer configuration because it's broken
+# in Krita 5.2.0
+import os
+import xml.etree.ElementTree as ET
+import zipfile as zp
+
+# `xml` representation of the desired Color Adjust Filter Layer configuration
+# Indentation is the same as in a regular `filterconfig` file
+XML_LAYER_NAME = "Alpha Adjust"
+XML_LAYER_ASSTR = """<!DOCTYPE params>
+<params version="1">
+ <param name="nTransfers">8</param>
+ <param name="curve0">0,0;1,1;</param>
+ <param name="curve1">0,0;1,1;</param>
+ <param name="curve2">0,0;1,1;</param>
+ <param name="curve3">0,0;1,1;</param>
+ <param name="curve4">0,0;0.156377,0.0809037;0.850071,0.758355;1,1;</param>
+ <param name="curve5">0,0;1,1;</param>
+ <param name="curve6">0,0;1,1;</param>
+ <param name="curve7">0,0;1,1;</param>
+</params>
+"""
+XML_FILE = "maindoc.xml"
+
+
+def xml_find_layer_byname(xml_root: ET.Element, layer_name: str) -> ET.Element:
+    """Looks into all `<layer>` elements in the document's root and returns the
+    layer named `Alpha Adjust`.
+
+    Attributes:
+        `xml_root` (`ET.Element`): the root element from the xml
+        `layer_name` (`str`): the name of the target layer
+
+    Returns:
+        `layer` (`Et.Element`): the target layer element hardcoded in the function
+    """
+    for layer in xml_root[0].iter("{http://www.calligra.org/DTD/krita}layer"):
+        if layer_name in layer.attrib.values():
+            return layer
+        else:
+            pass
+
+
+# Close the document to allow for `XML` editing
+image_closed = current_document.close()
+
+# Change the working directory to the current document's folder
+# This is required because the script's CWD is Krita's install folder
+cwd = os.chdir(path=current_doc_path)
+
+# Assign a name to a temporary file
+temp_zip = str("_" + Path(new_file_path).name)
+
+# Declare empty variables to hold data from `maindoc.xml`
+filterconfig_file = None
+
+# Check whether the new image is closed and the file was saved
+if image_closed:
+    # Open the original Krita file as if it were a `zip`
+    with zp.ZipFile(new_file_path, mode="r") as archive:
+        print("About to extract the XML")
+        archive.extract(XML_FILE)
+
+        # Read the extracted `xml`
+        xml_tree = ET.parse(XML_FILE)
+        xml_root = xml_tree.getroot()
+
+        # Get the target node's xml element
+        target_node = xml_find_layer_byname(
+            xml_root=xml_root, layer_name=XML_LAYER_NAME
+        )
+
+        # Get the target `.filterconfig` filename
+        filterconfig_file = f"{target_node.get('filename')}.filterconfig"
+
+        # Open a new, empty Krita file
+        with zp.ZipFile(temp_zip, mode="w") as new_archive:
+            print("About to build new .kra")
+            # Iterate through each file in the `.kra` archive and write all contents
+            # to the new file, except for the target `filterconfig` file
+            for item in archive.infolist():
+                if item.filename == f"Unnamed/layers/{filterconfig_file}":
+                    continue
+                with archive.open(item.filename) as file:
+                    new_archive.writestr(item, file.read())
+
+    # Replace the old file
+    os.remove(new_file_path)
+    os.rename(temp_zip, Path(new_file_path).name)
+
+    # Write the correct `filterconfig` file in the new `.kra` file
+    with zp.ZipFile(Path(new_file_path).name, mode="a") as archive:
+        with archive.open(f"Unnamed/layers/{filterconfig_file}", mode="w") as file:
+            binary = XML_LAYER_ASSTR.encode("utf-8")
+            file.write(binary)
+
+    # Cleanup the unneded xml file
+    os.remove(XML_FILE)
+
+    # Reload the ready document
+    finished_document = app.openDocument(new_file_path)
+    app.activeWindow().addView(finished_document)
