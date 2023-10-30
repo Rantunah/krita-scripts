@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "krita-scripts"
+version = "0.1.0"
+description = "Collection of small Krita scripts that I use in production."
+authors = ["Rui Antunes <rui.andre.antunes@gmail.com>"]
+license = "Unlicense"
+readme = "README.md"
+
+[tool.ruff]
+ignore = ["F403", "F405"]  # `from krita import *` is acceptable
+exclude = ["./PyKrita.py"]  # This file is a stub and should not be linted
+
+[tool.poetry.dependencies]
+python = "3.10.7"
+
+[tool.poetry.group.dev.dependencies]
+# `PyQt5` is embedded in Krita and is only required for typechecking in IDEs
+PyQt5 = "^5.15.9"
+pyqt5-qt5 = "5.15.2"  # Required version to solve an issue with Poetry
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
