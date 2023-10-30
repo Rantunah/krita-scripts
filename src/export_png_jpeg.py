@@ -1,8 +1,11 @@
-from PyQt5.QtWidgets import QMessageBox
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from krita import *
+if TYPE_CHECKING:
+    from ..PyKrita import *
+else:
+    from krita import *
+    from PyQt5.QtWidgets import QMessageBox
 
 
 app = Krita.instance()
@@ -14,11 +17,12 @@ current_doc_name = Path(current_document.fileName()).stem
 MESSAGE_TITLE = "Krita Macro"
 SUCCESSFUL_EXPORT = "A imagem foi exportada com sucesso."
 
+
 def export_image(extension: Literal["png", "jpg"]):
     """Exports the image in the current active document to either JPG or PNG
     with some defined parameters."""
     export_parameters = InfoObject()
-    
+
     if extension == "png":
         export_parameters.setProperties(
             {
@@ -28,7 +32,7 @@ def export_image(extension: Literal["png", "jpg"]):
                 "indexed": False,
                 "interlaced": False,
                 "saveSRGBProfile": False,
-                "transparencyFillcolor": [255, 255, 255]
+                "transparencyFillcolor": [255, 255, 255],
             }
         )
     elif extension == "jpg":
@@ -47,14 +51,15 @@ def export_image(extension: Literal["png", "jpg"]):
                 "smoothing": 0,
                 "subsampling": 3,
                 "xmp": True,
-                "transparencyFillcolor": [255, 255, 255]
+                "transparencyFillcolor": [255, 255, 255],
             }
-        )       
-    
+        )
+
     new_file_path = str(current_doc_path / (current_doc_name + f".{extension}"))
-    
+
     status = current_document.exportImage(new_file_path, export_parameters)
     return status
+
 
 file_formats = ["jpg", "png"]
 status = []
