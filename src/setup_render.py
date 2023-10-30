@@ -139,9 +139,24 @@ def create_filllayer_color(
     return new_filllayer
 
 
+# TODO: This would be the correct way to create a `perchannel` layer
+# but it's not working as of 5.2.0
 def create_filterlayer(
-    name: str, parent_layer=root_node, layer_bellow: str | None = None
-):
+    name: str, parent_layer: Node = root_node, layer_bellow: str | None = None
+) -> Node:
+    """Creates an Adjustment Filter Layer with specific curve values
+    hardcoded in this function.
+
+    Args:
+        `name` (`str`): Name for the new layer\n
+        `parent_layer` (`Node`): The layer where this new one will be nested on.
+        Defaults to `root_node`.\n
+        `layer_bellow` (`str` | None, optional): The layer that will be bellow this new one.
+        Defaults to `None`.\n
+
+    Returns:
+        `color_adjust_filterlayer` (`Node`): The node object for the new layer.
+    """
     # Check if layer position is required and get it's `Node` object
     layer_position = current_document.nodeByName(layer_bellow) if layer_bellow else None
 
@@ -225,6 +240,12 @@ def sort_group_bytype(group_name: str, type: str):
 
 
 def nest_one_layer(layer_name: str, group_name: str):
+    """Nest a layer node inside a group layer
+
+    Args:
+        `layer_name` (`str`): The selected layer's name.\n
+        `group_name` (`str`): The selected group's name.\n
+    """
     selected_layer = current_document.nodeByName(layer_name)
     selected_group = current_document.nodeByName(group_name)
     duplicate_layer = selected_layer.duplicate()
@@ -233,6 +254,12 @@ def nest_one_layer(layer_name: str, group_name: str):
 
 
 def nest_n_layers(layer_list: list, group_name: str):
+    """Nest multiple layers inside a group of layers
+
+    Args:
+        `layer_list` (`list`): A list of names for the selected layers.\n
+        `group_name` (`str`): The selected group's name.\n
+    """
     for layer in layer_list:
         nest_one_layer(layer_name=layer, group_name=group_name)
 
@@ -305,6 +332,8 @@ nest_one_layer(layer_name=RENDER_PASSES_CLONE, group_name=ALPHA_MASK_GROUP)
 alpha_paint_layer = create_paintlayer(
     name=ALPHA_PAINT, parent_layer=current_document.nodeByName(ALPHA_MASK_GROUP)
 )
+# TODO: As of 5.2.0, there is a bug preventing the `perchannel` layer
+# from being configured, so this just creates the layer
 alpha_adjust_layer = create_filterlayer(
     name=ALPHA_ADJUST, parent_layer=alpha_mask_group, layer_bellow=ALPHA_PAINT
 )
